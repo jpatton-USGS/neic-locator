@@ -11,7 +11,10 @@ import java.util.Date;
 import java.util.Iterator;
 
 public class LocService implements LocationService {
-  String modelPath = null;
+  /** 
+   * A String containing the model path for the locator, null to use default
+   */
+  private String modelPath = null;
 
   /**
    * Implement the location service interface.
@@ -63,17 +66,21 @@ public class LocService implements LocationService {
 
     // setup the event
     Event event = new Event(in.getEarthModel());
-    event.serverIn(in);
+    event.input(in);
 
     // setup the locator
     Locate loc = new Locate(event, ttLocal, auxLoc);;
     
     // perform the location
     LocStatus status = loc.doLoc();
-    event.setExitCode(status);
+    event.setLocatorExitCode(status);
 
     // print results for debugging
     event.printNEIC();
+    System.out.println("");
+
+    // get the output
+    LocOutput out = event.output();
 
     // only return on a successful completion
     if (status.status() > 3) {

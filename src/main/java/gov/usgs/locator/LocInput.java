@@ -8,8 +8,7 @@ import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.Scanner;
-import java.util.regex.Pattern;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Scanner;
 import java.util.regex.Pattern;
@@ -54,132 +53,151 @@ public class LocInput extends LocationRequest {
     setOutputData(request.getOutputData());
   }
 
-	public LocInput(final LocationRequest request) {
-		setType(request.getType());
-		setEarthModel(request.getEarthModel());
-		setSourceLatitude(request.getSourceLatitude());
-		setSourceLongitude(request.getSourceLongitude());
-		setSourceOriginTime(request.getSourceOriginTime());
-		setSourceDepth(request.getSourceDepth());
-		setInputData(request.getInputData());
-		setIsLocationNew(request.getIsLocationNew());
-		setIsLocationHeld(request.getIsLocationHeld());
-		setIsDepthHeld(request.getIsDepthHeld());
-		setIsBayesianDepth(request.getIsBayesianDepth());
-		setBayesianDepth(request.getBayesianDepth());
-		setBayesianSpread(request.getBayesianSpread());
-		setUseRSTT(request.getUseRSTT());
-		setUseSVD(request.getIsLocationNew());
-		setOutputData(request.getOutputData());
-	}
+  /**
+   * This function sead a Bulletin Hydra style event input file.  File open and 
+   * read exceptions are trapped.
+   * 
+   * @param filePath A String containing the path to hydra file
+   * @return True if the read was successful
+   */
+  public boolean readHydra(String filePath) {
+    BufferedInputStream in;
+    Scanner scan;
+    Pattern affinity = Pattern.compile("\\d*\\.\\d*");
 
-	/**
-	 * Read a Bulletin Hydra style event input file.  File open and 
-	 * read exceptions are trapped.
-	 * 
-	 * @param filePath path to hydra file
-	 * @return True if the read was successful
-	 */
-	public boolean readHydra(String filePath) {
-		BufferedInputStream in;
-		Scanner scan;
-		Pattern affinity = Pattern.compile("\\d*\\.\\d*");
+    // Set up the IO.
+    try {
+      in = new BufferedInputStream(new FileInputStream(filePath));
+    } catch (FileNotFoundException e) {
+      e.printStackTrace();
+      return false;
+    }
+    scan = new Scanner(in);
+    try {
+      // Get the hypocenter information.
+      setSourceOriginTime(new Date(LocUtil.toJavaTime(scan.nextDouble())));
+      setSourceLatitude(scan.nextDouble());
+      setSourceLongitude(scan.nextDouble());
+      setSourceDepth(scan.nextDouble());
+      
+      // Get the analyst commands.
+      setIsLocationHeld(LocUtil.getBoolean(scan.next().charAt(0)));
+      setIsDepthHeld(LocUtil.getBoolean(scan.next().charAt(0)));
+      setIsBayesianDepth(LocUtil.getBoolean(scan.next().charAt(0)));
+      setBayesianDepth(scan.nextDouble());
+      setBayesianSpread(scan.nextDouble());
+      char rstt = scan.next().charAt(0); // (not used)
+      setUseSVD(!LocUtil.getBoolean(scan.next().charAt(0))); // True when noSvd is false
+      
+      // Fiddle because the analyst command last flag is omitted in earlier 
+      // data.
+      char moved;
+      if (scan.hasNextInt()) {
+        moved = 'F';
+      } else {
+        moved = scan.next().charAt(0);
+      }
+      setIsLocationNew(LocUtil.getBoolean(moved));
+     
+      // create the pick list
+      ArrayList<gov.usgs.processingformats.Pick> pickList = 
+          new ArrayList<gov.usgs.processingformats.Pick>();
 
-		// Set up the IO.
-		try {
-			in = new BufferedInputStream(new FileInputStream(
-				filePath));
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-			return false;
-		}
-		scan = new Scanner(in);
-		try {
-			// Get the hypocenter information.
-			setSourceOriginTime(new Date(LocUtil.toJavaTime(scan.nextDouble())));
-			setSourceLatitude(scan.nextDouble());
-			setSourceLongitude(scan.nextDouble());
-			setSourceDepth(scan.nextDouble());
-			// Get the analyst commands.
-			setIsLocationHeld(LocUtil.getBoolean(scan.next().charAt(0)));
-			setIsDepthHeld(LocUtil.getBoolean(scan.next().charAt(0)));
-			setIsBayesianDepth(LocUtil.getBoolean(scan.next().charAt(0)));
-			setBayesianDepth(scan.nextDouble());
-			setBayesianSpread(scan.nextDouble());
-			setUseRSTT(LocUtil.getBoolean(scan.next().charAt(0)));
-			setUseSVD(!LocUtil.getBoolean(scan.next().charAt(0))); // True when noSvd is false
-			// Fiddle because the last flag is omitted in earlier data.
-			if(scan.hasNextInt()) {
-				setIsLocationNew(false);
-			} else {
-				setIsLocationNew(LocUtil.getBoolean(scan.next().charAt(0)));
-			}
-			
-			// Get the pick information.
-			while(scan.hasNext()) {
-				gov.usgs.processingformats.Pick newPick = 
-					new gov.usgs.processingformats.Pick();
+      // Get the pick information.
+      while (scan.hasNext()) {
+        gov.usgs.processingformats.Pick newPick = 
+            new gov.usgs.processingformats.Pick();
+        
+        newPick.setId(scan.next());
 
-				// Get the station information.
-				newPick.setId(scan.next());
-				newPick.getSite().setStation(scan.next());
-				newPick.getSite().setChannel(scan.next());
-				newPick.getSite().setNetwork(scan.next());
-				newPick.getSite().setLocation(scan.next());
-				newPick.getSite().setLatitude(scan.nextDouble());
-				newPick.getSite().setLongitude(scan.nextDouble());
-				newPick.getSite().setElevation(scan.nextDouble());
-				// Get the rest of the pick information.  Note that some 
-				// fiddling is required as some of the positional arguments 
-				// are sometimes omitted.
-				newPick.setQuality(scan.nextDouble());
-				if(scan.hasNextDouble()) {
-					newPick.setLocatedPhase("");
-				} else {
-					newPick.setLocatedPhase(scan.next());
-				}
-				newPick.setTime(new Date(LocUtil.toJavaTime(scan.nextDouble())));
-				newPick.setUse(LocUtil.getBoolean(scan.next().charAt(0)));
-				
-				int auth = scan.nextInt();
-				if (auth == 0) {
-					newPick.getSource().setType("ContributedAutomatic");
-				} else if (auth == 1) {
-					newPick.getSource().setType("LocalAutomatic");
-				} else if (auth == 2) {
-					newPick.getSource().setType("ContributedHuman");
-				} else if (auth == 3) {
-					newPick.getSource().setType("LocalHuman");
-				}
+        // Get the station information.
+        gov.usgs.processingformats.Site newSite = 
+            new gov.usgs.processingformats.Site();
+        newSite.setStation(scan.next());
+        newSite.setChannel(scan.next());
+        newSite.setNetwork(scan.next());
+        newSite.setLocation(scan.next());
+        newSite.setLatitude(scan.nextDouble());
+        newSite.setLongitude(scan.nextDouble());
+        newSite.setElevation(scan.nextDouble());
+        newPick.setSite(newSite);
+
+        // Get the rest of the pick information.  Note that some 
+        // fiddling is required as some of the positional arguments 
+        // are sometimes omitted.
+        newPick.setQuality(scan.nextDouble());
+        String curPh = null;
+        if (!scan.hasNextDouble()) {
+          curPh = scan.next();
+        }
+        newPick.setPickedPhase(curPh);
+
+        newPick.setTime(new Date(LocUtil.toJavaTime(scan.nextDouble())));
+        newPick.setUse(LocUtil.getBoolean(scan.next().charAt(0)));
+
+        // convert author type
+        int auth = scan.nextInt();
+        String authType = null;
+        if (auth == 0) {
+          authType = "ContributedAutomatic";
+        } else if (auth == 1) {
+          authType = "LocalAutomatic";
+        } else if (auth == 2) {
+          authType = "ContributedHuman";
+        } else if (auth == 3) {
+          authType = "LocalHuman";
+        } else {
+          authType = "ContributedAutomatic";
+        }
         // make up agency/author because a hydra input file does not have that 
         // information, only author type
         gov.usgs.processingformats.Source newSource = 
             new gov.usgs.processingformats.Source("US", "Hydra", authType);
         newPick.setSource(newSource);
 
-				if(scan.hasNextInt() || !scan.hasNext()) {
-					newPick.setAssociatedPhase("");
-					newPick.setAffinity(0d);
-				} else if(scan.hasNext(affinity)) {
-					newPick.setAssociatedPhase("");
-					newPick.setAffinity(scan.nextDouble());
-				} else {
-					newPick.setAssociatedPhase(scan.next());
-					if(scan.hasNext(affinity)) {
-						newPick.setAffinity(scan.nextDouble());
-					} else {
-						newPick.setAffinity(0d);
-					}
-				}
-				// Add the pick to the list
-				getInputData().add(newPick);
-			}
-			scan.close();
-			in.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-			return false;
-		}
-		return true;
-	}
+        String obsPh = null;
+        double aff = 0d;
+        if (scan.hasNextInt() || !scan.hasNext()) {
+          aff = 0d;
+        } else if (scan.hasNext(affinity)) {
+          aff = scan.nextDouble();
+        } else {
+          obsPh = scan.next();
+          if (scan.hasNext(affinity)) {
+            aff = scan.nextDouble();
+          } else {
+            aff = 0d;
+          }
+        }
+        newPick.setAffinity(aff);
+        newPick.setAssociatedPhase(obsPh);
+       
+        if (newPick.isValid()) {
+          // Add the pick to the list
+          pickList.add(newPick);
+        } else {
+          ArrayList<String> errorList = newPick.getErrors();
+
+          // combine the errors into a single string
+          String errorString = new String();
+          for (int i = 0; i < errorList.size(); i++) {
+            errorString += " " + errorList.get(i);
+          }
+
+          System.out.println("Invalid pick: " + errorString);
+        }
+      }
+
+      // add the pick list to the request
+      setInputData(pickList);
+
+      // done with file
+      scan.close();
+      in.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+      return false;
+    }
+    return true;
+  }
 }

@@ -49,7 +49,7 @@ public class AuxLocRef {
   /**
    * Path for model files.
    */
-  public String modelPath;      
+  private String modelPath;      
 
   /**
    * A String containing the serialized file name.

@@ -14,8 +14,8 @@ public class Hypocenter {
 	double latitude;			// Geographic latitude in degrees
 	double longitude;			// Longitude in degrees
 	double depth;					// Depth in kilometers
-	double bayesDepth;		// Bayesian depth in kilometers
-	double bayesSpread;		// Bayesian uncertainty in kilometers
+	double bayesianDepth;		// Bayesian depth in kilometers
+	double bayesianDepthSpread;		// Bayesian uncertainty in kilometers
 	// Internal use:
 	int degOfFreedom;			// Degrees of freedom
 	double coLat;					// Geocentric colatitude in degrees
@@ -78,8 +78,8 @@ public class Hypocenter {
 				LocUtil.DEPTHMAX);
 		updateHypo(originTime, latitude, longitude, depth);
 		// Set defaults for the rest.
-		bayesDepth = Double.NaN;
-		bayesSpread = Double.NaN;
+		bayesianDepth = Double.NaN;
+		bayesianDepthSpread = Double.NaN;
 		depthRes = Double.NaN;
 		depthWeight = Double.NaN;
 		medianRes = 0d;
@@ -92,16 +92,16 @@ public class Hypocenter {
 	 * Set an analyst requested Bayesian depth.  Note that this forces 
 	 * the event starting depth to the Bayesian depth.
 	 * 
-	 * @param bayesDepth Bayesian depth in kilometers
-	 * @param bayesSpread Uncertainty of the Bayesian depth in kilometers
+	 * @param bayesianDepth Bayesian depth in kilometers
+	 * @param bayesianDepthSpread Uncertainty of the Bayesian depth in kilometers
 	 */
-	public void addBayes(double bayesDepth, double bayesSpread) {
-		this.bayesDepth = Math.min(Math.max(bayesDepth, LocUtil.DEPTHMIN), 
+	public void addBayes(double bayesianDepth, double bayesianDepthSpread) {
+		this.bayesianDepth = Math.min(Math.max(bayesianDepth, LocUtil.DEPTHMIN), 
 				LocUtil.DEPTHMAX);
-		this.bayesSpread = bayesSpread;
-		depth = bayesDepth;
+		this.bayesianDepthSpread = bayesianDepthSpread;
+		depth = bayesianDepth;
 		depthRes = 0d;
-		depthWeight = 3d/bayesSpread;
+		depthWeight = 3d/bayesianDepthSpread;
 	}
 	
 	/**
@@ -135,7 +135,7 @@ public class Hypocenter {
 		coLat = TauUtil.geoCen(latitude);
 		updateSines();
 		// Update the Bayesian depth residual.
-		if(!Double.isNaN(bayesDepth)) depthRes = bayesDepth-depth;
+		if(!Double.isNaN(bayesianDepth)) depthRes = bayesianDepth-depth;
 	}
 	
 	/**
@@ -183,7 +183,7 @@ public class Hypocenter {
 		// Update the sines and cosines.
 		updateSines();
 		// Update the Bayesian depth residual.
-		if(!Double.isNaN(bayesDepth)) depthRes = bayesDepth-depth;
+		if(!Double.isNaN(bayesianDepth)) depthRes = bayesianDepth-depth;
 	}
 	
 	/**
@@ -208,15 +208,15 @@ public class Hypocenter {
 	/**
 	 * Update the Bayesian depth (if not set by an analyst).
 	 * 
-	 * @param bayesDepth Bayesian depth in kilometers
-	 * @param bayesSpread Uncertainty of the Bayesian depth in kilometers
+	 * @param bayesianDepth Bayesian depth in kilometers
+	 * @param bayesianDepthSpread Uncertainty of the Bayesian depth in kilometers
 	 */
-	public void updateBayes(double bayesDepth, double bayesSpread) {
-		this.bayesDepth = bayesDepth;
-		this.bayesSpread = bayesSpread;
-		depthRes = bayesDepth-depth;
+	public void updateBayes(double bayesianDepth, double bayesianDepthSpread) {
+		this.bayesianDepth = bayesianDepth;
+		this.bayesianDepthSpread = bayesianDepthSpread;
+		depthRes = bayesianDepth-depth;
 		// The Bayesian spread is actually taken as a 90th percentile.
-		depthWeight = 3d/bayesSpread;
+		depthWeight = 3d/bayesianDepthSpread;
 	}
 	
 	/**
