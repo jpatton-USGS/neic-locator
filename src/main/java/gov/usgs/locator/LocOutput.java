@@ -1,5 +1,6 @@
 package gov.usgs.locator;
 
+import gov.usgs.processingformats.LocationResult;
 import gov.usgs.processingformats.Pick;
 import java.io.PrintWriter;
 import java.util.ArrayList;

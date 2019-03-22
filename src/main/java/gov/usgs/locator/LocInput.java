@@ -135,16 +135,18 @@ public class LocInput extends LocationRequest {
         newPick.setTime(new Date(LocUtil.toJavaTime(scan.nextDouble())));
         newPick.setUse(LocUtil.getBoolean(scan.next().charAt(0)));
 
-        // convert author type
+        // convert author type 
+        // 1 = automatic contributed, 2 = automatic NEIC, 
+        // 3 = analyst contributed, 4 = NEIC analyst.
         int auth = scan.nextInt();
         String authType = null;
-        if (auth == 0) {
+        if (auth == 1) {
           authType = "ContributedAutomatic";
-        } else if (auth == 1) {
-          authType = "LocalAutomatic";
         } else if (auth == 2) {
-          authType = "ContributedHuman";
+          authType = "LocalAutomatic";
         } else if (auth == 3) {
+          authType = "ContributedHuman";
+        } else if (auth == 4) {
           authType = "LocalHuman";
         } else {
           authType = "ContributedAutomatic";
