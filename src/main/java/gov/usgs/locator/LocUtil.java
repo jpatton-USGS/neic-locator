@@ -325,11 +325,11 @@ public class LocUtil {
 		double cosdel, sindel, tm1, tm2;	// Use Bob Engdahl's variable names
 		
 		// Compute some intermediate variables.
-		cosdel = hypo.sinLat*audit.sinLat*(audit.cosLon*hypo.cosLon+
-				audit.sinLon*hypo.sinLon)+hypo.cosLat*audit.cosLat;
-		tm1 = audit.sinLat*(audit.sinLon*hypo.cosLon-audit.cosLon*hypo.sinLon);
-		tm2 = hypo.sinLat*audit.cosLat-hypo.cosLat*audit.sinLat*
-				(audit.cosLon*hypo.cosLon+audit.sinLon*hypo.sinLon);
+		cosdel = hypo.sinLat*audit.getCoLatitudeSine()*(audit.getLongitudeCosine()*hypo.cosLon+
+				audit.getLongitudeSine()*hypo.sinLon)+hypo.cosLat*audit.getCoLatitudeCosine();
+		tm1 = audit.getCoLatitudeSine()*(audit.getLongitudeSine()*hypo.cosLon-audit.getLongitudeCosine()*hypo.sinLon);
+		tm2 = hypo.sinLat*audit.getCoLatitudeCosine()-hypo.cosLat*audit.getCoLatitudeSine()*
+				(audit.getLongitudeCosine()*hypo.cosLon+audit.getLongitudeSine()*hypo.sinLon);
 		sindel = Math.sqrt(Math.pow(tm1,2d)+Math.pow(tm2,2d));
 		
 		// Do delta.
@@ -348,10 +348,10 @@ public class LocUtil {
 	 * @return True if the hypocenters are (nearly) the same
 	 */
 	public static boolean hypoCompare(Hypocenter hypo, HypoAudit audit) {
-		if(Math.abs(hypo.originTime-audit.originTime) <= 0.01d && 
-				Math.abs(hypo.latitude-audit.latitude) <= 0.0001d && 
-				Math.abs(hypo.longitude-audit.longitude) <= 0.0001d && 
-				Math.abs(hypo.depth-audit.depth) <= 0.01d) return true;
+		if(Math.abs(hypo.originTime-audit.getOriginTime()) <= 0.01d && 
+				Math.abs(hypo.latitude-audit.getLatitude()) <= 0.0001d && 
+				Math.abs(hypo.longitude-audit.getLongitude()) <= 0.0001d && 
+				Math.abs(hypo.depth-audit.getDepth()) <= 0.01d) return true;
 		else return false;
 	}
 	

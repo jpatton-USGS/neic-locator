@@ -226,10 +226,10 @@ public class Hypocenter {
 	 * @param backup Hypocenter audit record
 	 */
 	public void resetHypo(HypoAudit backup) {
-		originTime = backup.originTime;
-		latitude = backup.latitude;
-		longitude = backup.longitude;
-		depth = backup.depth;
+		originTime = backup.getOriginTime();
+		latitude = backup.getLatitude();
+		longitude = backup.getLongitude();
+		depth = backup.getDepth();
 	}
 	
 	/**

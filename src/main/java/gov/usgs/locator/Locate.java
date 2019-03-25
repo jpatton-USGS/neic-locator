@@ -131,14 +131,14 @@ public class Locate {
 				// level audit instance.
 				if(iter >= LocUtil.ITERLIM[stage]) status = LocStatus.FULL_ITERATIONS;
 				hypo.delH = LocUtil.delStep(hypo, audit.get(audit.size()-1));
-				hypo.delZ = Math.abs(hypo.depth-audit.get(audit.size()-1).depth);
+				hypo.delZ = Math.abs(hypo.depth-audit.get(audit.size()-1).getDepth());
 				hypo.stepLen = Math.sqrt(Math.pow(hypo.delH,2d)+
 						Math.pow(hypo.delZ,2d));
 				
 				// If we've converged, create a final location level audit.
 				if(stage > 0 && hypo.stepLen <= LocUtil.CONVLIM[stage]) {
 					hypo.delH = LocUtil.delStep(hypo, audit.get(0));
-					hypo.delZ = Math.abs(hypo.depth-audit.get(0).depth);
+					hypo.delZ = Math.abs(hypo.depth-audit.get(0).getDepth());
 					hypo.stepLen = Math.sqrt(Math.pow(hypo.delH,2d)+
 							Math.pow(hypo.delZ,2d));
 					event.addAudit(stage, iter, status);
