@@ -7,8 +7,10 @@
  */
 
 plugins {
-    // Apply the java plugin to add support for Java
-    id 'java'
+    // add web application archive support
+    // id 'java'
+    id 'war'
+    id 'org.gretty' version '2.3.1' 
     // code coverage
     id "jacoco"
     // static code analysis
@@ -34,6 +36,8 @@ configurations {
 }
 
 dependencies {
+    // javax.servlet
+    providedCompile "javax.servlet:javax.servlet-api:4.0.1"
     // Use JUnit test framework
     testCompile "junit:junit-dep:4.11"
     // com.googlecode.json.simple
