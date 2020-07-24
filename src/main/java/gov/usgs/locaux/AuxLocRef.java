@@ -10,6 +10,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.channels.FileLock;
 import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * The AuxLocRef class manages auxiliary data files that support the Locator such as the continental
@@ -55,7 +57,7 @@ public class AuxLocRef {
   private Scanner scan;
 
   /** Private logging object. */
-  // private static final Logger LOGGER = Logger.getLogger(LocMain.class.getName());
+  private static final Logger LOGGER = Logger.getLogger(AuxLocRef.class.getName());
 
   /**
    * Read the cratons and zone statistics files and make the data available to the Locator.
@@ -127,8 +129,8 @@ public class AuxLocRef {
 
       // Wait for an exclusive lock for writing.
       lock = serOut.getChannel().lock();
-      //   LOGGER.fine(
-      //      "AuxLocRef write lock: valid = " + lock.isValid() + " shared = " + lock.isShared());
+      LOGGER.fine(
+          "AuxLocRef write lock: valid = " + lock.isValid() + " shared = " + lock.isShared());
 
       // The auxiliary data can be read and written very quickly, so for persistent
       // applications such as the travel time or location server, serialization is
@@ -148,14 +150,14 @@ public class AuxLocRef {
       serOut.close();
     } else {
       // Read in the serialized file.
-      //	LOGGER.fine("Read the serialized file.");
+      LOGGER.fine("Read the serialized file.");
       serIn = new FileInputStream(modelPath + serializedFileName);
       objIn = new ObjectInputStream(serIn);
 
       // Wait for a shared lock for reading.
       lock = serIn.getChannel().lock(0, Long.MAX_VALUE, true);
-      //	LOGGER.fine(
-      //     "AuxLocRef read lock: valid = " + lock.isValid() + " shared = " + lock.isShared());
+      LOGGER.fine(
+          "AuxLocRef read lock: valid = " + lock.isValid() + " shared = " + lock.isShared());
 
       // load the cratons and zoneStats
       cratons = (Cratons) objIn.readObject();
@@ -276,69 +278,74 @@ public class AuxLocRef {
 
   /** Read in the slab model. */
   private void readSlabs() {
-    boolean first = true;
-    double firstLon, lastLon;
-    SlabArea area;
-    SlabRow row;
-    SlabPoint point;
+    boolean firstPoint = true;
 
     // Prime the pump.
-    area = new SlabArea();
-    row = new SlabRow();
+    SlabArea area = new SlabArea();
+    SlabRow row = new SlabRow();
+
     // Read in the first point.
-    point = scanLine();
+    SlabPoint point = scanLine();
     row.add(point);
-    firstLon = point.getLon();
-    lastLon = firstLon;
+    double firstLongitude = point.getLon();
+    double lastLongitude = firstLongitude;
 
     // As long as there's still data, keep on trucking.
     while (scan.hasNextDouble()) {
       point = scanLine();
+
       // Look for the end of a latitude row.
-      if (Math.abs(point.getLon() - lastLon) > LocUtil.SLABINCREMENT + TauUtil.DTOL) {
+      if (Math.abs(point.getLon() - lastLongitude) > LocUtil.SLABINCREMENT + TauUtil.DTOL) {
         // Print out the first and last points in each area.
-        //  	if(LOGGER.getLevel() == Level.FINE) {
-        if (first || Math.abs(point.getLon() - firstLon) > TauUtil.DTOL) {
-          // 				LOGGER.fine(row.printRaw());
-          if (first) {
-            first = false;
-          } else {
-            first = true;
+        if (LOGGER.getLevel() == Level.FINE) {
+          if (firstPoint || Math.abs(point.getLon() - firstLongitude) > TauUtil.DTOL) {
+            LOGGER.fine(row.printRaw());
+
+            if (firstPoint) {
+              firstPoint = false;
+            } else {
+              firstPoint = true;
+            }
           }
         }
-        //   	}
+
         // Squeeze out the NaNs and save the remaining data in segments.
         row.squeeze();
+
         // Look for the start of a new area.
-        if (Math.abs(point.getLon() - firstLon) > TauUtil.DTOL) {
+        if (Math.abs(point.getLon() - firstLongitude) > TauUtil.DTOL) {
           // Add the last row.
           area.add(row);
           // Print a summary of the last area.
-          // 			LOGGER.fine(area.printArea(false));
+          LOGGER.fine(area.printArea(false));
           // Add the last area to all.
           slabs.add(area);
           // Start a new area.
           area = new SlabArea();
           row = new SlabRow();
-          firstLon = point.getLon();
+          firstLongitude = point.getLon();
         } else {
           // Add the row to the current area.
           area.add(row);
+
           // Start a new row.
           row = new SlabRow();
         }
       }
+
       // Add the current point to the current row.
       row.add(point);
-      lastLon = point.getLon();
+      lastLongitude = point.getLon();
     }
+
     // Deal with the last point, which closes the last row and area.
-    //  LOGGER.fine(row.printRaw());
+    LOGGER.fine(row.printRaw());
     row.squeeze();
     area.add(row);
     slabs.add(area);
+
     // Print the summary for the last area.
-    //	LOGGER.fine(area.printArea(false));
+    LOGGER.fine(area.printArea(false));
   }
 
   /**
@@ -347,23 +354,24 @@ public class AuxLocRef {
    * @return Slab depth point
    */
   private SlabPoint scanLine() {
-    double lat, lon, lower, center, upper;
-
     // Leave the longitude in the 0-360 degree format because the date
     // line is in the middle of slab areas.
-    lon = scan.nextDouble();
+    double longitude = scan.nextDouble();
+
     // Convert latitude to colatitude to make the access rounding
     // consistent.
-    lat = 90d - scan.nextDouble();
+    double coLatitude = 90d - scan.nextDouble();
+
     // Note that the depths in the file are all negative.
-    /**
-     * The center is where the earthquakes are. The lower bound (smaller depth) is shallower. The
-     * upper bound (larger depth) is deeper.
-     */
-    center = scan.nextDouble();
-    lower = scan.nextDouble();
-    upper = scan.nextDouble();
-    return new SlabPoint(lat, lon, center, lower, upper);
+    // The center is where the earthquakes are. The lower bound
+    // (smaller depth) is shallower. The upper bound (larger depth)
+    // is deeper.
+    double center = scan.nextDouble();
+    double lowerBound = scan.nextDouble();
+    double upperBound = scan.nextDouble();
+
+    // return the new point
+    return new SlabPoint(coLatitude, longitude, center, lowerBound, upperBound);
   }
 
   /**

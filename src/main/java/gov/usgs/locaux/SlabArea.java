@@ -11,20 +11,27 @@ import java.util.ArrayList;
 public class SlabArea implements Serializable {
   private static final long serialVersionUID = 1L;
   int rowFound = -1;
-  double latBase;
-  double[] latRange;
-  double[] lonRange;
+  double baseLatitude;
+  double[] latitudeRange;
+  double[] longitudeRange;
+
+  /**
+   * An arraylist of SlabRow objects containing the rows in this slab area.git s
+   */
   ArrayList<SlabRow> slabRows;
 
-  /** Set up storage for the rows, segments, and depths. */
+  /** 
+   * The Slab area constructor, This constructor sets up storage for the rows, segments, 
+   * and depths. 
+   */
   public SlabArea() {
-    latBase = 180d;
-    latRange = new double[2];
-    lonRange = new double[2];
-    latRange[0] = 180d;
-    latRange[1] = 0d;
-    lonRange[0] = 360d;
-    lonRange[1] = 0d;
+    baseLatitude = 180d;
+    latitudeRange = new double[2];
+    longitudeRange = new double[2];
+    latitudeRange[0] = 180d;
+    latitudeRange[1] = 0d;
+    longitudeRange[0] = 360d;
+    longitudeRange[1] = 0d;
     slabRows = new ArrayList<SlabRow>();
   }
 
@@ -35,11 +42,12 @@ public class SlabArea implements Serializable {
    */
   public void add(SlabRow slabRow) {
     if (slabRow.getLonRange() != null) {
-      latBase = Math.min(latBase, slabRow.getLat());
-      latRange[0] = Math.min(latRange[0], slabRow.getLat() - LocUtil.SLABHALFINC);
-      latRange[1] = Math.max(latRange[1], slabRow.getLat() + LocUtil.SLABHALFINC);
-      lonRange[0] = Math.min(lonRange[0], slabRow.getLonRange()[0]);
-      lonRange[1] = Math.max(lonRange[1], slabRow.getLonRange()[1]);
+      baseLatitude = Math.min(baseLatitude, slabRow.getLat());
+      latitudeRange[0] = Math.min(latitudeRange[0], slabRow.getLat() - LocUtil.SLABHALFINC);
+      latitudeRange[1] = Math.max(latitudeRange[1], slabRow.getLat() + LocUtil.SLABHALFINC);
+      longitudeRange[0] = Math.min(longitudeRange[0], slabRow.getLonRange()[0]);
+      longitudeRange[1] = Math.max(longitudeRange[1], slabRow.getLonRange()[1]);
+
       slabRows.add(slabRow);
     }
   }
@@ -52,8 +60,9 @@ public class SlabArea implements Serializable {
    * @return True if the point falls in this area
    */
   public boolean isFound(double lat, double lon) {
-    if (lat >= latRange[0] && lat <= latRange[1] && lon >= lonRange[0] && lon <= lonRange[1]) {
-      int j = (int) ((lat - latBase) / LocUtil.SLABINCREMENT);
+    if (lat >= latitudeRange[0] && lat <= latitudeRange[1] && lon >= longitudeRange[0] && lon <= longitudeRange[1]) {
+      int j = (int) ((lat - baseLatitude) / LocUtil.SLABINCREMENT);
+      
       if (slabRows.get(j).isFound(lon)) {
         rowFound = j;
         return true;
@@ -62,6 +71,7 @@ public class SlabArea implements Serializable {
         return true;
       }
     }
+
     rowFound = -1;
     return false;
   }
@@ -75,24 +85,27 @@ public class SlabArea implements Serializable {
    * @return Slab depth triplet
    */
   public SlabDepth getDepth(double lat, double lon) {
-    double[] v;
-    double[][][] v0, v1;
-
     if (rowFound >= 0 && rowFound < slabRows.size()) {
       // Get the 3-vectors for interpolation.
-      v = Geometry.vector(lon, lat, Double.NaN);
-      v0 = new double[2][][];
+      double[] v = Geometry.vector(lon, lat, Double.NaN);
+      double[][][] v0 = new double[2][][];
+      double[][][] v1;
+
       slabRows.get(rowFound++).getVectors(lon, v0);
+
       if (rowFound < slabRows.size()) {
         v1 = new double[2][][];
         slabRows.get(rowFound).getVectors(lon, v1);
       } else {
         v1 = null;
       }
+
       // Make sure v0 and v1 are looking at the same place.
       align(v0, v1);
+
       return interp(v0, v1, v);
     }
+
     rowFound = -1;
     return null;
   }
@@ -105,15 +118,25 @@ public class SlabArea implements Serializable {
    * @param v1 Bottom latitude row vectors
    */
   private void align(double[][][] v0, double[][][] v1) {
-    if (v0 == null || v1 == null) return;
-    if (v0[0] == null || v1[0] == null) return;
-    if (v0[0][0][0] == v1[0][0][0]) return;
+    if (v0 == null || v1 == null) {
+      return;
+    }
+
+    if (v0[0] == null || v1[0] == null) {
+      return;
+    }
+
+    if (v0[0][0][0] == v1[0][0][0]) {
+      return;
+    }
+    
     // Apparently, not aligned.
     if (v0[0][0][0] < v1[0][0][0]) {
       // V1 is offset.  Fix it.
       if (v1[1] == null) {
         v1[1] = new double[3][3];
       }
+      
       for (int j = 0; j < v1[0].length; j++) {
         v1[1][j] = v1[0][j];
       }
@@ -123,9 +146,11 @@ public class SlabArea implements Serializable {
       if (v0[1] == null) {
         v0[1] = new double[3][3];
       }
+      
       for (int j = 0; j < v0[0].length; j++) {
         v0[1][j] = v0[0][j];
       }
+
       v0[0] = null;
     }
   }
@@ -272,7 +297,7 @@ public class SlabArea implements Serializable {
    * latitude rows missing, add dummies to ensure completeness.
    */
   public void fixGaps() {
-    double lastLat = latBase - LocUtil.SLABINCREMENT;
+    double lastLat = baseLatitude - LocUtil.SLABINCREMENT;
     for (int j = 0; j < slabRows.size(); j++) {
       if (slabRows.get(j).getLat() - lastLat > LocUtil.SLABINCREMENT + 1e-6d) {
         lastLat += LocUtil.SLABINCREMENT;
@@ -288,18 +313,20 @@ public class SlabArea implements Serializable {
    *
    * @param full If true, print row and segment summaries as well
    */
-  public void printArea(boolean full) {
-    System.out.println("Area: " + toString());
+  public String printArea(boolean full) {
+    String areaString = "Area: " + toString();
     if (full) {
       for (SlabRow row : slabRows) {
-        row.printRow();
+        areaString += row.printRow() + "\n";
       }
     }
+
+    return areaString;
   }
 
   @Override
   public String toString() {
     return String.format(
-        "(%6.2f,%6.2f) - (%6.2f,%6.2f)", latRange[0], lonRange[0], latRange[1], lonRange[1]);
+        "(%6.2f,%6.2f) - (%6.2f,%6.2f)", latitudeRange[0], longitudeRange[0], latitudeRange[1], longitudeRange[1]);
   }
 }

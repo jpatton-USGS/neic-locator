@@ -177,28 +177,35 @@ public class SlabRow implements Serializable {
   }
 
   /** Print out a summary of the points before squeezing. */
-  public void printRaw() {
+  public String printRaw() {
+    String rowString = "";
     if (slabPoints != null) {
       int last = slabPoints.size() - 1;
-      System.out.format(
-          "\t\tRaw: (%6.2f,%6.2f) - (%6.2f,%6.2f)\n",
-          slabPoints.get(0).getLat(),
-          slabPoints.get(0).getLon(),
-          slabPoints.get(last).getLat(),
-          slabPoints.get(last).getLon());
+      rowString +=
+          String.format(
+              "Raw: (%6.2f,%6.2f) - (%6.2f,%6.2f)",
+              slabPoints.get(0).getLat(),
+              slabPoints.get(0).getLon(),
+              slabPoints.get(last).getLat(),
+              slabPoints.get(last).getLon());
     }
+
+    return rowString;
   }
 
   /** Print out a summary of the segments created by squeezing. */
-  public void printRow() {
+  public String printRow() {
+    String rowString = "";
     if (lonRange != null) {
-      System.out.println("\tRow: " + toString());
+      rowString += "Row: " + toString();
       if (slabSegs != null) {
         for (int j = 0; j < slabSegs.size(); j++) {
-          System.out.println("\t\tSeg: " + slabSegs.get(j));
+          rowString += "Seg: " + slabSegs.get(j);
         }
       }
     }
+
+    return rowString;
   }
 
   @Override
